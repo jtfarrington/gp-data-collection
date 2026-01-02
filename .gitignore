@@ -42,4 +42,4 @@ temp_video.html
 
 # Keep directory structure
 !exports/.gitkeep
-!assets/.gitkeep
+!assets/.gitkeepconfig.py
