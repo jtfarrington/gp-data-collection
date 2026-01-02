@@ -7,7 +7,7 @@ from ui.ui_page_2 import create_page_2_ui
 
 def create_window():
     window = pv.PvWindow(
-        title="PyVisual Window",
+        title="GP",
         width=1080,
         height=720,
         bg_color=(255, 255, 255, 1),
