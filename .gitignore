@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Application specific
+exports/*.csv
+exports/*.xlsx
+exports/*.pdf
+match_videos/
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Temporary files
+temp_video.html
+
+# Keep directory structure
+!exports/.gitkeep
+!assets/.gitkeep
