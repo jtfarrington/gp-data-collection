@@ -179,7 +179,6 @@ class MatchDatabase:
         cursor = conn.cursor()
         
         # Parse date from dd/mm/yy format
-        # %y automatically interprets 2-digit year as 20XX
         try:
             match_date = datetime.strptime(date_str, '%d/%m/%y')
         except ValueError:
@@ -189,12 +188,15 @@ class MatchDatabase:
             except ValueError:
                 raise ValueError(f"Invalid date format: {date_str}. Expected dd/mm/yy or dd/mm/yyyy")
         
-        # Insert match metadata (with NULL for match_start and match_end for now)
+        # Set match_start to the date at 00:00:00
+        match_start = match_date.replace(hour=0, minute=0, second=0)
+        
+        # Insert match metadata
         cursor.execute(
             """INSERT INTO match_metadata 
-               (home_id, away_id, venue, competition, match_start, match_end) 
-               VALUES (%s, %s, %s, %s, NULL, NULL)""",
-            (home_id, away_id, venue, competition)
+            (home_id, away_id, venue, competition, match_start, match_end) 
+            VALUES (%s, %s, %s, %s, %s, NULL)""",
+            (home_id, away_id, venue, competition, match_start)
         )
         match_id = cursor.lastrowid
         
@@ -263,6 +265,12 @@ class MatchDatabase:
                 match_details['competition'],
                 match_details['date']
             )
+
+            # Link video if provided in form_data
+            if form_data.get('video_path'):
+                video_offset = form_data.get('video_offset_seconds', 0)
+                self.link_video_to_match(conn, match_id, form_data['video_path'], video_offset)
+                print(f"✓ Video linked to match")
             
             # 4. Process home team starters
             starters = home_team_data['starters']
@@ -1263,3 +1271,110 @@ class MatchDatabase:
         result = cursor.fetchall()
         cursor.close()
         return result
+    
+    # ============================================
+    # Video Management
+    # ============================================
+    
+    def link_video_to_match(self, conn, match_id, video_path, video_offset_seconds=0):
+        """
+        Link a video file to a match
+        
+        Args:
+            conn: Database connection
+            match_id: Match ID
+            video_path: Full path to video file
+            video_offset_seconds: Offset in seconds (how many seconds into video match starts)
+            
+        Returns:
+            video_id if successful, None otherwise
+        """
+        try:
+            cursor = conn.cursor()
+            
+            # Check if video already exists for this match
+            cursor.execute("""
+                SELECT video_id FROM match_video WHERE match_id = %s
+            """, (match_id,))
+            
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing
+                cursor.execute("""
+                    UPDATE match_video
+                    SET video_path = %s, video_offset_seconds = %s
+                    WHERE match_id = %s
+                """, (video_path, video_offset_seconds, match_id))
+                video_id = existing[0]
+            else:
+                # Insert new
+                cursor.execute("""
+                    INSERT INTO match_video (match_id, video_path, video_offset_seconds)
+                    VALUES (%s, %s, %s)
+                """, (match_id, video_path, video_offset_seconds))
+                video_id = cursor.lastrowid
+            
+            conn.commit()
+            cursor.close()
+            return video_id
+            
+        except Exception as e:
+            print(f"Error linking video: {e}")
+            return None
+    
+    def get_match_video(self, conn, match_id):
+        """
+        Get video information for a match
+        
+        Args:
+            conn: Database connection
+            match_id: Match ID
+            
+        Returns:
+            Dictionary with video info, or None if no video
+        """
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT 
+                    v.video_id,
+                    v.video_path,
+                    v.video_offset_seconds,
+                    m.match_start
+                FROM match_video v
+                JOIN match_metadata m ON v.match_id = m.match_id
+                WHERE v.match_id = %s
+            """, (match_id,))
+            
+            result = cursor.fetchone()
+            cursor.close()
+            return result
+            
+        except Exception as e:
+            print(f"Error getting video: {e}")
+            return None
+    
+    def remove_match_video(self, conn, match_id):
+        """
+        Remove video link from match
+        
+        Args:
+            conn: Database connection
+            match_id: Match ID
+            
+        Returns:
+            True if successful
+        """
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM match_video WHERE match_id = %s
+            """, (match_id,))
+            conn.commit()
+            cursor.close()
+            return True
+            
+        except Exception as e:
+            print(f"Error removing video: {e}")
+            return False

@@ -8,4 +8,5 @@ PySide6==6.10.1
 PySide6_Addons==6.10.1
 PySide6_Essentials==6.10.1
 pyvisual==0.65
+pywin32==311
 shiboken6==6.10.1

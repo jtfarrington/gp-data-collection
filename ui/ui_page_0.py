@@ -887,5 +887,24 @@ def create_page_0_ui(window,ui):
         icon_scale=1, icon_position='left', icon_spacing=10, icon_color='none',
         text_type='text', max_length=None, on_hover=None, on_click=None,
         on_release=None, tag=None)
+    
+    # Video selection button
+    ui_page["select_video_button"] = pv.PvButton(
+        container=window, x=8, y=250, width=150, height=30,
+        text='Select Video',
+        font='assets/fonts/Lexend/Lexend.ttf', font_size=12,
+        font_color=(0, 0, 0, 1),
+        idle_color=(179, 229, 252, 1), hover_color=(144, 202, 249, 1),
+        border_color=(220, 220, 220, 1), border_thickness=1,
+        is_visible=True
+    )
+    
+    ui_page["video_status_label"] = pv.PvText(
+        container=window, x=8, y=280, width=200, height=30,
+        text='No video',
+        font='assets/fonts/Lexend/Lexend.ttf', font_size=11,
+        font_color=(100, 100, 100, 1),
+        is_visible=True
+    )
 
     return ui_page

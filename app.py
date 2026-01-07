@@ -10,6 +10,7 @@ os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.fonts=false'
 from data_export import DataExporter
 import os
 from datetime import datetime
+from video_controller import VideoController
 
 # ===================================================
 # ================ 1. LOGIC CODE ====================
@@ -18,6 +19,8 @@ from datetime import datetime
 # Initialize database
 db = MatchDatabase()
 
+# Initialize video controller
+video_controller = VideoController()
 
 def collect_form_data(ui):
     """
@@ -249,7 +252,9 @@ def collect_form_data(ui):
     return {
         'match_details': match_details,
         'home_team': home_team,
-        'away_team': away_team
+        'away_team': away_team,
+        'video_path': ui.get('selected_video_path'),  
+        'video_offset_seconds': 0  
     }
 
 
@@ -271,6 +276,15 @@ def handle_submit(ui):
     
     if success:
         print(f"✓ Match saved successfully! Match ID: {result}")
+        # Open video if one was selected
+        if ui.get('selected_video_path'):
+            video_success = video_controller.start_mpv(ui['selected_video_path'])
+            if video_success:
+                print("✓ Video opened (paused)")
+            else:
+                print("⚠ Failed to open video")
+        # Go to page 1
+        handle_goto_page_1_click(ui)
         return True, result
     else:
         print(f"✗ Error saving match: {result}")
@@ -2115,6 +2129,21 @@ def handle_start_match_click(ui):
         else:  # Away Team
             left_team_id = away_team_id
         
+        # Start match clock
+        match_start_time = datetime.now()
+        ui['match_clock_start'] = match_start_time
+        ui['match_started'] = True
+        
+        # Update match_start in database
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE match_metadata
+            SET match_start = %s
+            WHERE match_id = %s
+        """, (match_start_time, ui['current_match_id']))
+        conn.commit()
+        cursor.close()
+        
         # Save playing direction to database
         cursor = conn.cursor()
         cursor.execute("""
@@ -2126,21 +2155,23 @@ def handle_start_match_click(ui):
         cursor.close()
         
         print(f"✓ {playing_left} will start on the left side")
+        print(f"✓ Match started at {get_match_time(ui)}")
         
     except Exception as e:
-        print(f"✗ Error saving playing direction: {e}")
+        print(f"✗ Error starting match: {e}")
         return
     finally:
         conn.close()
-    
+
     # Lock the dropdown (disable it)
     ui['page_1']['playing_left_dropdown'].setEnabled(False)
     
-    # Start match clock
-    ui['match_clock_start'] = datetime.now()
-    ui['match_started'] = True
-    print(f"✓ Match started at {get_match_time(ui)}")
     print(f"Click Kickoff -> Player Name -> Action")
+
+    # After match clock starts, unpause video 
+    if video_controller.pipe_handle:
+        video_controller.set_pause(False)
+        print("✓ Video playing")
     
 def handle_kickoff_click(ui):
     """Handle kickoff button click"""
@@ -2501,6 +2532,11 @@ def handle_pause_match_click(ui):
         # Update button text
         ui['page_1']['pause_match_button'].text = 'pause_match'
         
+        # Resume video
+        if video_controller.pipe_handle:
+            video_controller.set_pause(False)
+            print("✓ Video resumed")
+        
         # Log to event log
         ui['event_log'].append({
             'event_id': None,
@@ -2518,6 +2554,11 @@ def handle_pause_match_click(ui):
         
         # Update button text
         ui['page_1']['pause_match_button'].text = 'unpause_match'
+        
+        # Pause video
+        if video_controller.pipe_handle:
+            video_controller.set_pause(True)
+            print("✓ Video paused")
         
         # Log to event log
         ui['event_log'].append({
@@ -3159,6 +3200,8 @@ def handle_event_selected(ui, event_id):
             print(f"✗ Event {event_id} not found")
             return
         
+        video_info = db.get_match_video(conn, ui['current_match_id'])
+        
         # Store current event
         ui['current_review_event_id'] = event_id
         ui['current_review_event'] = event
@@ -3248,7 +3291,40 @@ def handle_event_selected(ui, event_id):
             show_handball_fields(ui, event)
         elif event['event_type'] == 'Substitution':  
             show_substitution_fields(ui, event)
+
+# Only seek if video exists AND match_start is set
+        if video_info and video_info.get('match_start'):
+            event_time = event['time']
             
+            print(f"DEBUG - Event time: {event_time}")
+            print(f"DEBUG - Match start: {video_info['match_start']}")
+            
+            # Convert event time to seconds since midnight
+            if hasattr(event_time, 'hour'):
+                event_seconds = (event_time.hour * 3600 + 
+                               event_time.minute * 60 + 
+                               event_time.second)
+            else:
+                event_seconds = event_time
+            
+            match_start = video_info['match_start']
+            match_start_seconds = (match_start.hour * 3600 +
+                                  match_start.minute * 60 +
+                                  match_start.second)
+            
+            print(f"DEBUG - Event seconds: {event_seconds}")
+            print(f"DEBUG - Match start seconds: {match_start_seconds}")
+            
+            # Calculate video timestamp
+            seconds_since_start = event_seconds - match_start_seconds
+            video_timestamp = seconds_since_start + video_info['video_offset_seconds']
+            
+            print(f"DEBUG - Seconds since start: {seconds_since_start}")
+            print(f"DEBUG - Video offset: {video_info['video_offset_seconds']}")
+            print(f"DEBUG - Final video timestamp: {video_timestamp}")
+            
+            # Seek video
+            video_controller.seek_to_timestamp(video_timestamp)
         
     finally:
         conn.close()
@@ -3521,6 +3597,26 @@ def handle_save_and_next(ui):
         print(f"✗ Error finding next event: {e}")
     finally:
         conn.close()
+
+def handle_select_video_click(ui):
+    """Handle video file selection"""
+    from PySide6.QtWidgets import QFileDialog
+    
+    file_path, _ = QFileDialog.getOpenFileName(
+        ui['window'],
+        "Select Match Video",
+        "",
+        "Video Files (*.mp4 *.avi *.mkv *.mov);;All Files (*.*)"
+    )
+    
+    if file_path:
+        ui['selected_video_path'] = file_path
+        filename = os.path.basename(file_path)
+        ui['page_0']['video_status_label'].text = f"✓ {filename}"
+        ui['page_0']['video_status_label'].font_color = (0, 150, 0, 1)
+        print(f"✓ Video selected: {file_path}")
+    else:
+        print("Video selection cancelled")
 
 def show_shot_fields(ui, event):
     """Show shot-specific fields and populate with data"""
@@ -4600,6 +4696,8 @@ def attach_events(ui):
             print(f"✗ Cannot proceed to event collection - please fix errors")
     
     ui['page_0']['submit_lineups_button'].on_click = on_submit_click
+
+    ui['page_0']['select_video_button'].on_click = lambda _: handle_select_video_click(ui)
     
     # ============ PAGE 1 EVENTS ============
     

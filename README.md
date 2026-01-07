@@ -65,7 +65,7 @@
 
 ## Installation (Full setup and use video: COMING SOON)
 
-### Prerequisets
+### Prerequisites
 1. Python 3.8 > 3.13 (https://www.python.org/downloads/release/python-3130/) Make sure you install this Python version somehwere you can find it. 
 2. MySQL 8.0+ and MySQL Workbench (https://www.youtube.com/watch?v=u96rVINbAUI)
 3. Git (for cloning)
@@ -250,7 +250,7 @@ See this diagram for a deeper understanding of schema structure.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-Development Setup
+**Development Setup**
 
 Fork the repository
 
@@ -278,7 +278,7 @@ Email: jtsfarrington@gmail.com
 
 ## Acknowledgments
 
-PyVisual - UI component library (https://www.youtube.com/watch?v=JjV9h042YaY
+PyVisual - UI component library (https://www.youtube.com/watch?v=JjV9h042YaY)
 
 PySide6 - Qt bindings for Python
 
