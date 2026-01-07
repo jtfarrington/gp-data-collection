@@ -27,7 +27,7 @@
 - **Incomplete event navigation:** Prev/Next buttons to quickly view missing data.
 - **Validation system:** Flags incomplete events for review.
 
-### Video Sychronization (Coming Soon)
+### Video Sychronization 
 - **Automatic timestamp syncing:** Video jumps to event location on event click.
 - **MPV Integration:** External video player with IPC control.
 - **Multi Format Support:** MP4, AVI, MKV, MOVD.
@@ -59,7 +59,7 @@
 - **mysql-connector-python:** Database connectivity. 
 ### Data Processing
 - **CSV Module:** Data export functionality.
-### Video (planned)
+### Video 
 - **MPV:** Lightweight video player with IPC.
 - **yt-dlp:** Video download utility. 
 
