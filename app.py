@@ -2842,6 +2842,9 @@ def hide_all_detail_fields(ui):
     ui['page_2']['pass_type_label'].is_visible = False  
     ui['page_2']['pass_length_dropdown'].hide()  
     ui['page_2']['pass_height_dropdown'].hide()  
+    ui['page_2']['into_area_label'].is_visible = False
+    ui['page_2']['into_area_yes_button'].is_visible = False
+    ui['page_2']['into_area_no_button'].is_visible = False
     
     # Cross fields
     ui['page_2']['cross_intention_label'].is_visible = False
@@ -2879,15 +2882,15 @@ def hide_all_detail_fields(ui):
     ui['page_2']['card_second_yellow_button'].is_visible = False  
     ui['page_2']['card_red_button'].is_visible = False  
 
-    # Offside fields - NEW
+    # Offside fields
     ui['page_2']['offside_player_label'].is_visible = False
     ui['page_2']['offside_player_dropdown'].hide()
 
-    # Handball fields - NEW
+    # Handball fields 
     ui['page_2']['handball_player_label'].is_visible = False
     ui['page_2']['handball_player_dropdown'].hide()
 
-    # Substitution fields - NEW
+    # Substitution fields 
     ui['page_2']['sub_in_label'].is_visible = False
     ui['page_2']['sub_in_dropdown'].hide()
     ui['page_2']['sub_out_label'].is_visible = False
@@ -3483,9 +3486,10 @@ def handle_pass_assist_click(ui, is_assist):
         # Get current pass details
         event = db.get_event_details(conn, event_id)
         line_split = event.get('line_split', False)
+        into_area = event.get('into_area', False)
         
         # Update assist
-        db.update_pass_details(conn, event_id, is_assist, line_split)
+        db.update_pass_details(conn, event_id, is_assist, line_split, into_area)
         
         # Update button colors
         if is_assist:
@@ -3517,9 +3521,10 @@ def handle_pass_line_split_click(ui, is_line_split):
         # Get current pass details
         event = db.get_event_details(conn, event_id)
         assist = event.get('assist', False)
+        into_area = event.get('into_area', False)
         
         # Update line_split
-        db.update_pass_details(conn, event_id, assist, is_line_split)
+        db.update_pass_details(conn, event_id, assist, is_line_split, into_area)
         
         # Update button colors
         if is_line_split:
@@ -3533,6 +3538,41 @@ def handle_pass_line_split_click(ui, is_line_split):
         
     except Exception as e:
         print(f"✗ Error updating line split: {e}")
+    finally:
+        conn.close()
+
+
+def handle_pass_into_area_click(ui, is_into_area):
+    """Handle pass into area button clicks"""
+    
+    if not ui.get('current_review_event_id'):
+        print("✗ No event selected")
+        return
+    
+    event_id = ui['current_review_event_id']
+    
+    conn = db.get_connection()
+    try:
+        # Get current pass details
+        event = db.get_event_details(conn, event_id)
+        assist = event.get('assist', False)
+        line_split = event.get('line_split', False)
+        
+        # Update into_area
+        db.update_pass_details(conn, event_id, assist, line_split, is_into_area)
+        
+        # Update button colors
+        if is_into_area:
+            ui['page_2']['into_area_yes_button'].idle_color = (165, 214, 167, 1)
+            ui['page_2']['into_area_no_button'].idle_color = (245, 245, 245, 1)
+        else:
+            ui['page_2']['into_area_yes_button'].idle_color = (245, 245, 245, 1)
+            ui['page_2']['into_area_no_button'].idle_color = (224, 224, 224, 1)
+        
+        print(f"✓ Pass into area updated: {is_into_area}")
+        
+    except Exception as e:
+        print(f"✗ Error updating into area: {e}")
     finally:
         conn.close()
 
@@ -3668,6 +3708,18 @@ def show_pass_fields(ui, event):
     ui['page_2']['line_split_label'].is_visible = True
     ui['page_2']['line_split_yes_button'].is_visible = True
     ui['page_2']['line_split_no_button'].is_visible = True
+    # Show into_area buttons
+    ui['page_2']['into_area_label'].is_visible = True
+    ui['page_2']['into_area_yes_button'].is_visible = True
+    ui['page_2']['into_area_no_button'].is_visible = True
+    
+    # Set button colors based on value
+    if event.get('into_area'):
+        ui['page_2']['into_area_yes_button'].idle_color = (165, 214, 167, 1)  # Green
+        ui['page_2']['into_area_no_button'].idle_color = (245, 245, 245, 1)
+    else:
+        ui['page_2']['into_area_yes_button'].idle_color = (245, 245, 245, 1)
+        ui['page_2']['into_area_no_button'].idle_color = (224, 224, 224, 1)  # Gray
     
     # Set pass length dropdown
     pass_length = event.get('pass_length')
@@ -3957,7 +4009,9 @@ def initialize_page_2(ui):
             ui['page_2']['assist_no_button'].on_click = lambda _: handle_pass_assist_click(ui, False)
             ui['page_2']['line_split_yes_button'].on_click = lambda _: handle_pass_line_split_click(ui, True)
             ui['page_2']['line_split_no_button'].on_click = lambda _: handle_pass_line_split_click(ui, False)
-
+            # Bind into_area buttons
+            ui['page_2']['into_area_yes_button'].on_click = lambda _: handle_pass_into_area_click(ui, True)
+            ui['page_2']['into_area_no_button'].on_click = lambda _: handle_pass_into_area_click(ui, False)
             # Bind shot result dropdown
             ui['page_2']['shot_result_dropdown'].currentTextChanged.connect(lambda: handle_shot_result_change(ui))
 

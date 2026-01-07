@@ -496,6 +496,35 @@ def create_page_2_ui(window, ui):
         border_color=(220, 220, 220, 1), border_thickness=1,
         is_visible=False
     )
+
+    # Into Area buttons (similar to assist/line_split)
+    ui_page["into_area_label"] = pv.PvText(
+        container=scroll_content, x=20, y=450, width=200, height=25,
+        text='Into Area:',
+        font='assets/fonts/Lexend/Lexend.ttf', font_size=13,
+        font_color=(0, 0, 0, 1), bold=True,
+        is_visible=False
+    )
+
+    ui_page["into_area_yes_button"] = pv.PvButton(
+        container=scroll_content, x=20, y=480, width=80, height=30,
+        text='Yes',
+        font='assets/fonts/Lexend/Lexend.ttf', font_size=12,
+        font_color=(0, 0, 0, 1),
+        idle_color=(245, 245, 245, 1), hover_color=(165, 214, 167, 1),
+        border_color=(220, 220, 220, 1), border_thickness=1,
+        is_visible=False
+    )
+    
+    ui_page["into_area_no_button"] = pv.PvButton(
+        container=scroll_content, x=110, y=480, width=80, height=30,
+        text='No',
+        font='assets/fonts/Lexend/Lexend.ttf', font_size=12,
+        font_color=(0, 0, 0, 1),
+        idle_color=(245, 245, 245, 1), hover_color=(224, 224, 224, 1),
+        border_color=(220, 220, 220, 1), border_thickness=1,
+        is_visible=False
+    )
     
     # ==========================================
     # CROSS-SPECIFIC FIELDS

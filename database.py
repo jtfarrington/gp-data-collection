@@ -957,91 +957,92 @@ class MatchDatabase:
 
 
     def get_event_details(self, conn, event_id):
-        """Get complete details for a specific event"""
-        cursor = conn.cursor(dictionary=True)
+            """Get complete details for a specific event"""
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("""
+                SELECT 
+                    e.event_id,
+                    e.player_id,
+                    e.time,
+                    e.location_x,
+                    e.location_y,
+                    e.rating,
+                    t.team_name,
+                    p.player_name,
+                    p.jersey_num,
+                    sh.execution,
+                    sh.result,
+                    pa.pass_length,
+                    pa.pass_height,
+                    pa.assist,
+                    pa.line_split,
+                    pa.into_area,
+                    cr.intention,
+                    cr.technique,
+                    g.goal_zone,
+                    fo.reason as foul_reason,
+                    ca.reason as card_reason,
+                    ca.color as card_color,
+                    fo.guilty_id as foul_guilty_id, 
+                    fo.innocent_id as foul_innocent_id,
+                    du.context as duel_context,
+                    du.winner_id as duel_winner_id,
+                    du.loser_id as duel_loser_id, 
+                    sp.type as set_piece_type, 
+                    hb.guilty_id as handball_guilty_id,  
+                    su.in_player_id as sub_in_player_id,  
+                    su.out_player_id as sub_out_player_id,      
+                    CASE 
+                        WHEN pa.event_id IS NOT NULL THEN 'Pass'
+                        WHEN sh.event_id IS NOT NULL THEN 'Shot'
+                        WHEN cr.event_id IS NOT NULL THEN 'Cross'
+                        WHEN bw.event_id IS NOT NULL THEN 'Ball Won'
+                        WHEN cl.event_id IS NOT NULL THEN 'Clearance'
+                        WHEN sb.event_id IS NOT NULL THEN 'Shot Block'
+                        WHEN ss.event_id IS NOT NULL THEN 'Shot Save'
+                        WHEN oba.event_id IS NOT NULL THEN 'Other Ball Action'
+                        WHEN bp.event_id IS NOT NULL AND pa.event_id IS NULL AND sh.event_id IS NULL AND cr.event_id IS NULL THEN 'Ball Played'
+                        WHEN br.event_id IS NOT NULL AND bw.event_id IS NULL AND cl.event_id IS NULL AND sb.event_id IS NULL AND ss.event_id IS NULL THEN 'Ball Received'
+                        WHEN g.event_id IS NOT NULL THEN 'Goal'
+                        WHEN og.event_id IS NOT NULL THEN 'Own Goal'
+                        WHEN sp.event_id IS NOT NULL THEN 'Set Piece'
+                        WHEN fo.event_id IS NOT NULL THEN 'Foul'
+                        WHEN ca.event_id IS NOT NULL THEN 'Card'
+                        WHEN du.event_id IS NOT NULL THEN 'Duel'
+                        WHEN os.event_id IS NOT NULL THEN 'Offside'
+                        WHEN hb.event_id IS NOT NULL THEN 'Handball'
+                        WHEN su.event_id IS NOT NULL THEN 'Substitution'
+                        ELSE 'Other'
+                    END as event_type
+                FROM event e
+                JOIN team t ON e.team_id = t.team_id
+                JOIN player p ON e.player_id = p.player_id
+                LEFT JOIN ball_played bp ON e.event_id = bp.event_id
+                LEFT JOIN ball_received br ON e.event_id = br.event_id
+                LEFT JOIN pass pa ON bp.event_id = pa.event_id
+                LEFT JOIN shot sh ON bp.event_id = sh.event_id
+                LEFT JOIN cross_played cr ON bp.event_id = cr.event_id
+                LEFT JOIN goal g ON e.event_id = g.event_id
+                LEFT JOIN own_goal og ON e.event_id = og.event_id
+                LEFT JOIN set_piece sp ON e.event_id = sp.event_id
+                LEFT JOIN foul fo ON e.event_id = fo.event_id
+                LEFT JOIN card ca ON e.event_id = ca.event_id
+                LEFT JOIN duel du ON e.event_id = du.event_id
+                LEFT JOIN offside os ON e.event_id = os.event_id
+                LEFT JOIN handball hb ON e.event_id = hb.event_id
+                LEFT JOIN substitution su ON e.event_id = su.event_id
+                LEFT JOIN other_ball_action oba ON e.event_id = oba.event_id
+                LEFT JOIN ball_won bw ON br.event_id = bw.event_id
+                LEFT JOIN clearance cl ON br.event_id = cl.event_id
+                LEFT JOIN shot_block sb ON br.event_id = sb.event_id
+                LEFT JOIN shot_save ss ON br.event_id = ss.event_id
+                WHERE e.event_id = %s
+            """, (event_id,))
         
-        cursor.execute("""
-            SELECT 
-                e.event_id,
-                e.player_id,
-                e.time,
-                e.location_x,
-                e.location_y,
-                e.rating,
-                t.team_name,
-                p.player_name,
-                p.jersey_num,
-                sh.execution,
-                sh.result,
-                pa.pass_length,
-                pa.pass_height,
-                pa.assist,
-                pa.line_split,
-                cr.intention,
-                cr.technique,
-                g.goal_zone,
-                fo.reason as foul_reason,
-                ca.reason as card_reason,
-                ca.color as card_color,
-                fo.guilty_id as foul_guilty_id, 
-                fo.innocent_id as foul_innocent_id,
-                du.context as duel_context,
-                du.winner_id as duel_winner_id,
-                du.loser_id as duel_loser_id, 
-                sp.type as set_piece_type, 
-                hb.guilty_id as handball_guilty_id,  
-                su.in_player_id as sub_in_player_id,  
-                su.out_player_id as sub_out_player_id,      
-                CASE 
-                    WHEN pa.event_id IS NOT NULL THEN 'Pass'
-                    WHEN sh.event_id IS NOT NULL THEN 'Shot'
-                    WHEN cr.event_id IS NOT NULL THEN 'Cross'
-                    WHEN bw.event_id IS NOT NULL THEN 'Ball Won'
-                    WHEN cl.event_id IS NOT NULL THEN 'Clearance'
-                    WHEN sb.event_id IS NOT NULL THEN 'Shot Block'
-                    WHEN ss.event_id IS NOT NULL THEN 'Shot Save'
-                    WHEN oba.event_id IS NOT NULL THEN 'Other Ball Action'
-                    WHEN bp.event_id IS NOT NULL AND pa.event_id IS NULL AND sh.event_id IS NULL AND cr.event_id IS NULL THEN 'Ball Played'
-                    WHEN br.event_id IS NOT NULL AND bw.event_id IS NULL AND cl.event_id IS NULL AND sb.event_id IS NULL AND ss.event_id IS NULL THEN 'Ball Received'
-                    WHEN g.event_id IS NOT NULL THEN 'Goal'
-                    WHEN og.event_id IS NOT NULL THEN 'Own Goal'
-                    WHEN sp.event_id IS NOT NULL THEN 'Set Piece'
-                    WHEN fo.event_id IS NOT NULL THEN 'Foul'
-                    WHEN ca.event_id IS NOT NULL THEN 'Card'
-                    WHEN du.event_id IS NOT NULL THEN 'Duel'
-                    WHEN os.event_id IS NOT NULL THEN 'Offside'
-                    WHEN hb.event_id IS NOT NULL THEN 'Handball'
-                    WHEN su.event_id IS NOT NULL THEN 'Substitution'
-                    ELSE 'Other'
-                END as event_type
-            FROM event e
-            JOIN team t ON e.team_id = t.team_id
-            JOIN player p ON e.player_id = p.player_id
-            LEFT JOIN ball_played bp ON e.event_id = bp.event_id
-            LEFT JOIN ball_received br ON e.event_id = br.event_id
-            LEFT JOIN pass pa ON bp.event_id = pa.event_id
-            LEFT JOIN shot sh ON bp.event_id = sh.event_id
-            LEFT JOIN cross_played cr ON bp.event_id = cr.event_id
-            LEFT JOIN goal g ON e.event_id = g.event_id
-            LEFT JOIN own_goal og ON e.event_id = og.event_id
-            LEFT JOIN set_piece sp ON e.event_id = sp.event_id
-            LEFT JOIN foul fo ON e.event_id = fo.event_id
-            LEFT JOIN card ca ON e.event_id = ca.event_id
-            LEFT JOIN duel du ON e.event_id = du.event_id
-            LEFT JOIN offside os ON e.event_id = os.event_id
-            LEFT JOIN handball hb ON e.event_id = hb.event_id
-            LEFT JOIN substitution su ON e.event_id = su.event_id
-            LEFT JOIN other_ball_action oba ON e.event_id = oba.event_id
-            LEFT JOIN ball_won bw ON br.event_id = bw.event_id
-            LEFT JOIN clearance cl ON br.event_id = cl.event_id
-            LEFT JOIN shot_block sb ON br.event_id = sb.event_id
-            LEFT JOIN shot_save ss ON br.event_id = ss.event_id
-            WHERE e.event_id = %s
-        """, (event_id,))
-        
-        result = cursor.fetchone()
-        cursor.close()
-        return result
+            result = cursor.fetchone()
+            cursor.close()
+            return result
 
 
     def update_event_location(self, conn, event_id, location_x, location_y):
@@ -1077,15 +1078,15 @@ class MatchDatabase:
         conn.commit()
 
 
-    def update_pass_details(self, conn, event_id, assist, line_split):
-        """Update pass assist and line_split"""
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE pass 
-            SET assist = %s, line_split = %s
-            WHERE event_id = %s
-        """, (assist, line_split, event_id))
-        conn.commit()
+    def update_pass_details(self, conn, event_id, assist, line_split, into_area):
+            """Update pass assist, line_split, and into_area"""
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE pass 
+                SET assist = %s, line_split = %s, into_area = %s
+                WHERE event_id = %s
+            """, (assist, line_split, into_area, event_id))
+            conn.commit()
 
 
     def update_cross_details(self, conn, event_id, intention, technique):
